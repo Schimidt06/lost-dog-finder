@@ -1,0 +1,7 @@
+{
+  "name": "Encontre Seu Amigo",
+  "description": "Uma plataforma comunitária dedicada a ajudar donos a reencontrarem seus cães perdidos e pessoas que encontraram animais a localizarem seus donos.",
+  "requestFramePermissions": [
+    "geolocation"
+  ]
+}
