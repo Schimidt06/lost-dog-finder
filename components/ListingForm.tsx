@@ -2,6 +2,7 @@
 import React, { useState } from 'react';
 import { DogListing, DogStatus, DogSize, DogGender } from '../types';
 import { STATES } from '../constants';
+import { GoogleGenAI } from "@google/genai";
 
 interface ListingFormProps {
   type: DogStatus;
@@ -11,6 +12,7 @@ interface ListingFormProps {
 
 const ListingForm: React.FC<ListingFormProps> = ({ type, onClose, onSubmit }) => {
   const [step, setStep] = useState(1);
+  const [isGenerating, setIsGenerating] = useState(false);
   const [formData, setFormData] = useState({
     name: '',
     breed: 'SRD',
@@ -33,14 +35,39 @@ const ListingForm: React.FC<ListingFormProps> = ({ type, onClose, onSubmit }) =>
     showPhone: true
   });
 
+  const generateAIDescription = async () => {
+    setIsGenerating(true);
+    try {
+      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+      const prompt = `Gere uma descrição curta e emocionante (máximo 300 caracteres) para um anúncio de cachorro ${type === DogStatus.LOST ? 'PERDIDO' : 'ENCONTRADO'}. 
+      Nome: ${formData.name || 'Desconhecido'}, Raça: ${formData.breed}, Cor: ${formData.color}, Local: ${formData.neighborhood}, ${formData.city}. 
+      Mencione que ele é ${formData.isDocile ? 'dócil' : 'arisco'} e tem porte ${formData.size}. Seja direto e peça ajuda.`;
+      
+      const response = await ai.models.generateContent({
+        model: 'gemini-3-flash-preview',
+        contents: prompt,
+      });
+      
+      if (response.text) {
+        setFormData(prev => ({ ...prev, description: response.text }));
+      }
+    } catch (error) {
+      console.error("Erro ao gerar descrição:", error);
+      alert("Não foi possível gerar a descrição com IA no momento.");
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
+    // Fix: Added sightings: [] to satisfy DogListing interface
     const newListing: DogListing = {
       id: Math.random().toString(36).substr(2, 9),
       status: type,
       name: formData.name || undefined,
-      images: [`https://picsum.photos/seed/${Math.random()}/800/600`], // Simulate image upload
+      images: [`https://picsum.photos/seed/${Math.random()}/800/600`], 
       breed: formData.breed,
       color: formData.color,
       size: formData.size,
@@ -53,7 +80,7 @@ const ListingForm: React.FC<ListingFormProps> = ({ type, onClose, onSubmit }) =>
         city: formData.city,
         neighborhood: formData.neighborhood,
         reference: formData.reference || undefined,
-        lat: -23.5505 + (Math.random() - 0.5) * 0.1, // Simulated random coords near center
+        lat: -23.5505 + (Math.random() - 0.5) * 0.1,
         lng: -46.6333 + (Math.random() - 0.5) * 0.1
       },
       description: formData.description,
@@ -65,6 +92,7 @@ const ListingForm: React.FC<ListingFormProps> = ({ type, onClose, onSubmit }) =>
         phone: formData.contactPhone,
         showPhonePublicly: formData.showPhone
       },
+      sightings: [],
       createdAt: Date.now()
     };
 
@@ -157,14 +185,14 @@ const ListingForm: React.FC<ListingFormProps> = ({ type, onClose, onSubmit }) =>
                 </div>
               </div>
 
-              <div className="bg-orange-50 border border-orange-100 p-4 rounded-xl flex items-center gap-3">
-                  <div className="w-12 h-12 bg-white rounded-lg flex items-center justify-center text-orange-500 shadow-sm">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="18" height="18" x="3" y="3" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
-                  </div>
-                  <div className="text-xs text-orange-700">
-                      <strong>Dica:</strong> Uma foto bem nítida aumenta em 70% as chances de reencontro. 
-                      <p>(Simulação: Foto automática gerada ao salvar)</p>
-                  </div>
+              <div className="flex items-center gap-3 p-4 bg-orange-50 border border-orange-100 rounded-xl">
+                  <input 
+                      type="checkbox" id="isDocile"
+                      className="w-5 h-5 rounded border-gray-300 text-orange-500 focus:ring-orange-500"
+                      checked={formData.isDocile}
+                      onChange={e => setFormData({...formData, isDocile: e.target.checked})}
+                  />
+                  <label htmlFor="isDocile" className="text-sm text-orange-800 font-medium">Ele é dócil?</label>
               </div>
             </div>
           )}
@@ -172,37 +200,6 @@ const ListingForm: React.FC<ListingFormProps> = ({ type, onClose, onSubmit }) =>
           {step === 2 && (
             <div className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-1">Data</label>
-                  <input 
-                    type="date" required
-                    className="w-full px-4 py-3 rounded-xl border border-gray-200 outline-none"
-                    value={formData.date}
-                    onChange={e => setFormData({...formData, date: e.target.value})}
-                  />
-                </div>
-                <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-1">Horário aprox.</label>
-                    <input 
-                        type="time"
-                        className="w-full px-4 py-3 rounded-xl border border-gray-200 outline-none"
-                        value={formData.time}
-                        onChange={e => setFormData({...formData, time: e.target.value})}
-                    />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-1">Estado</label>
-                    <select 
-                        className="w-full px-4 py-3 rounded-xl border border-gray-200 outline-none"
-                        value={formData.state}
-                        onChange={e => setFormData({...formData, state: e.target.value})}
-                    >
-                        {STATES.map(s => <option key={s} value={s}>{s}</option>)}
-                    </select>
-                </div>
                 <div>
                   <label className="block text-sm font-semibold text-gray-700 mb-1">Cidade</label>
                   <input 
@@ -212,34 +209,37 @@ const ListingForm: React.FC<ListingFormProps> = ({ type, onClose, onSubmit }) =>
                     onChange={e => setFormData({...formData, city: e.target.value})}
                   />
                 </div>
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-1">Bairro</label>
+                  <input 
+                    type="text" required
+                    className="w-full px-4 py-3 rounded-xl border border-gray-200 outline-none"
+                    value={formData.neighborhood}
+                    onChange={e => setFormData({...formData, neighborhood: e.target.value})}
+                  />
+                </div>
               </div>
 
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-1">Bairro</label>
-                <input 
-                  type="text" required
-                  className="w-full px-4 py-3 rounded-xl border border-gray-200 outline-none"
-                  value={formData.neighborhood}
-                  onChange={e => setFormData({...formData, neighborhood: e.target.value})}
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-1">Ponto de Referência</label>
-                <input 
-                  type="text"
-                  className="w-full px-4 py-3 rounded-xl border border-gray-200 outline-none"
-                  placeholder="Ex: Próximo à padaria X"
-                  value={formData.reference}
-                  onChange={e => setFormData({...formData, reference: e.target.value})}
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-1">Descrição Adicional</label>
+              <div className="relative">
+                <div className="flex justify-between items-center mb-1">
+                  <label className="block text-sm font-semibold text-gray-700">Descrição Adicional</label>
+                  <button 
+                    type="button"
+                    onClick={generateAIDescription}
+                    disabled={isGenerating || !formData.city || !formData.color}
+                    className="text-[10px] font-bold bg-purple-600 text-white px-2 py-1 rounded-md hover:bg-purple-700 disabled:bg-gray-300 flex items-center gap-1 transition-all"
+                  >
+                    {isGenerating ? 'Gerando...' : (
+                      <>
+                        <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/></svg>
+                        Gerar com IA
+                      </>
+                    )}
+                  </button>
+                </div>
                 <textarea 
                   required
-                  className="w-full px-4 py-3 rounded-xl border border-gray-200 outline-none min-h-[100px]"
+                  className="w-full px-4 py-3 rounded-xl border border-gray-200 outline-none min-h-[120px] text-sm"
                   placeholder="Detalhes que ajudam a identificar..."
                   value={formData.description}
                   onChange={e => setFormData({...formData, description: e.target.value})}
@@ -270,20 +270,6 @@ const ListingForm: React.FC<ListingFormProps> = ({ type, onClose, onSubmit }) =>
                     onChange={e => setFormData({...formData, contactPhone: e.target.value})}
                   />
                 </div>
-
-                <div className="flex items-center gap-3 p-4 bg-gray-50 rounded-xl">
-                    <input 
-                        type="checkbox" id="showPhone"
-                        className="w-5 h-5 rounded border-gray-300 text-orange-500 focus:ring-orange-500"
-                        checked={formData.showPhone}
-                        onChange={e => setFormData({...formData, showPhone: e.target.checked})}
-                    />
-                    <label htmlFor="showPhone" className="text-sm text-gray-600">Exibir telefone publicamente para contato rápido</label>
-                </div>
-              </div>
-
-              <div className="bg-blue-50 border border-blue-100 p-4 rounded-xl text-xs text-blue-700 leading-relaxed">
-                  Ao clicar em publicar, você concorda com nossos termos de uso e política de privacidade. Nunca realize encontros em locais isolados e confirme sempre as informações do animal.
               </div>
             </div>
           )}
@@ -303,7 +289,7 @@ const ListingForm: React.FC<ListingFormProps> = ({ type, onClose, onSubmit }) =>
               <button 
                 type="button"
                 onClick={() => setStep(step + 1)}
-                className="flex-grow bg-orange-500 text-white py-3 rounded-xl font-bold hover:bg-orange-600 transition-all shadow-lg shadow-orange-200"
+                className="flex-grow bg-orange-500 text-white py-3 rounded-xl font-bold text-lg shadow-lg shadow-orange-200"
               >
                 Próximo Passo
               </button>

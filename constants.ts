@@ -26,6 +26,8 @@ export const MOCK_DOGS: DogListing[] = [
       phone: '11999999999',
       showPhonePublicly: true
     },
+    // Fix: Added missing sightings property
+    sightings: [],
     createdAt: Date.now() - 86400000
   },
   {
@@ -51,6 +53,8 @@ export const MOCK_DOGS: DogListing[] = [
       phone: '21988888888',
       showPhonePublicly: true
     },
+    // Fix: Added missing sightings property
+    sightings: [],
     createdAt: Date.now() - 43200000
   }
 ];

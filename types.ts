@@ -17,6 +17,22 @@ export enum DogGender {
   UNKNOWN = 'Não sei'
 }
 
+export interface Sighting {
+  id: string;
+  date: string;
+  time: string;
+  description: string;
+  location: string;
+  createdAt: number;
+}
+
+export interface Report {
+  id: string;
+  listingId: string;
+  reason: string;
+  createdAt: number;
+}
+
 export interface DogListing {
   id: string;
   name?: string;
@@ -47,6 +63,7 @@ export interface DogListing {
     email?: string;
     showPhonePublicly: boolean;
   };
+  sightings: Sighting[];
   createdAt: number;
 }
 
